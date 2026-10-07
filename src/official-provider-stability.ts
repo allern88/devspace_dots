@@ -127,7 +127,7 @@ export async function runOfficialProviderStability(
     ["agents", "targets", "--json"],
     env,
   );
-  const targets = readTargetNames(targetResult);
+  const targets = readTargetNames(targetResult.value);
   const providers: OfficialProviderStabilityResult[] = [];
 
   for (const provider of options.providers) {
