@@ -15,16 +15,13 @@ function testPackedPackageLaunchers(): void {
   const installRoot = join(root, "install");
   try {
     mkdirSync(installRoot, { recursive: true });
-    execFileSync(npmExecutable(), ["pack", "--silent", "--pack-destination", root], {
+    execCommand(npmExecutable(), ["pack", "--silent", "--pack-destination", root], {
       cwd: projectRoot,
-      encoding: "utf8",
-      stdio: "pipe",
-      shell: process.platform === "win32",
     });
     const archive = readdirSync(root).find((name) => name.endsWith(".tgz"));
     assert.ok(archive, "npm pack must produce a package archive");
 
-    execFileSync(npmExecutable(), [
+    execCommand(npmExecutable(), [
       "install",
       "--no-audit",
       "--no-fund",
@@ -34,9 +31,6 @@ function testPackedPackageLaunchers(): void {
       join(root, archive),
     ], {
       cwd: installRoot,
-      encoding: "utf8",
-      stdio: "pipe",
-      shell: process.platform === "win32",
     });
 
     const configRoot = join(root, "config");
@@ -79,10 +73,24 @@ function execInstalledBin(
     ".bin",
     process.platform === "win32" ? `${name}.cmd` : name,
   );
-  return execFileSync(executable, args, {
-    encoding: "utf8",
-    env,
-    stdio: "pipe",
-    shell: process.platform === "win32",
-  });
+  return execCommand(executable, args, { env });
+}
+
+function execCommand(
+  executable: string,
+  args: string[],
+  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {},
+): string {
+  const windows = process.platform === "win32";
+  return execFileSync(
+    windows ? process.env.ComSpec ?? "cmd.exe" : executable,
+    windows ? ["/d", "/c", executable, ...args] : args,
+    {
+      cwd: options.cwd,
+      encoding: "utf8",
+      env: options.env ?? process.env,
+      stdio: "pipe",
+      windowsHide: true,
+    },
+  );
 }
