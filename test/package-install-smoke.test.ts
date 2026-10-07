@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,7 +74,11 @@ function execInstalledPackageBin(
   args: string[],
   env: NodeJS.ProcessEnv,
 ): string {
-  const packageRoot = join(installRoot, "node_modules", "@waishnav", "devspace");
+  const packageRoot = findInstalledPackageRoot(
+    join(installRoot, "node_modules"),
+    "@waishnav/devspace",
+  );
+  assert.ok(packageRoot, "packed @waishnav/devspace package must be installed");
   const entrypoint = join(
     packageRoot,
     "bin",
@@ -84,6 +95,33 @@ function execInstalledPackageBin(
     stdio: "pipe",
     windowsHide: true,
   });
+}
+
+function findInstalledPackageRoot(
+  nodeModulesRoot: string,
+  packageName: string,
+): string | undefined {
+  const pending = [nodeModulesRoot];
+  while (pending.length > 0) {
+    const directory = pending.pop();
+    if (!directory || !existsSync(directory)) continue;
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.name === ".bin") continue;
+      const path = join(directory, entry.name);
+      if (!entry.isDirectory()) continue;
+      const manifestPath = join(path, "package.json");
+      if (existsSync(manifestPath)) {
+        try {
+          const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { name?: string };
+          if (manifest.name === packageName) return path;
+        } catch {
+          // Ignore dependency manifests that are not valid JSON.
+        }
+      }
+      pending.push(path);
+    }
+  }
+  return undefined;
 }
 
 function execCommand(
