@@ -1,6 +1,6 @@
 ---
 name: provider-stability
-description: Verify the real end-to-end availability and stability of the official Codex, Claude, and Google Antigravity providers connected to DevSpace. Use when the user asks whether providers are installed, authenticated, reliable, or safely routed.
+description: Verify the real end-to-end availability and stability of the official Codex, Claude, and approved Google automation providers connected to DevSpace. Use when the user asks whether providers are installed, authenticated, reliable, or safely routed.
 ---
 
 # Official provider stability
@@ -9,8 +9,16 @@ Use this skill only for providers the owner explicitly selected. The supported
 targets are `codex`, `claude`, and `antigravity`.
 
 Do not ask for, display, copy, or store provider passwords, browser cookies,
-access tokens, refresh tokens, or keyring files. The official client owns its
-credentials.
+access tokens, refresh tokens, API keys, or keyring files. The official client,
+local environment, or Google Cloud ADC owns its credentials.
+
+For Antigravity automation, require exactly one approved mode:
+
+- a locally injected `GEMINI_API_KEY` for Google AI Studio; or
+- `AGY_ADC_AUTH=true` with Gemini Enterprise/Google Cloud ADC.
+
+Do not use or suggest personal Antigravity or Google AI Pro OAuth through
+DevSpace. Do not configure both Google automation modes simultaneously.
 
 ## Inspect before testing
 
@@ -25,8 +33,9 @@ Treat a provider listed as available as an installation check only. It is not
 proof that authentication, quota, model access, or a real task works.
 
 If DevSpace reports `blocked_by_trust_policy`, do not bypass it. Identify and
-remove the third-party endpoint or gateway override. Never replace it with an
-unofficial mirror or shared token service.
+remove the unsupported authentication mode, third-party endpoint, insecure URL,
+or gateway override. Never replace it with an unofficial mirror or shared token
+service.
 
 ## Smoke test
 
@@ -70,10 +79,12 @@ plus a successful continuation turn.
 
 ## Security interpretation
 
-The runner verifies known endpoint overrides and real task behavior. It does not
-perform packet capture. State this limitation explicitly. Production acceptance
-also requires a machine-level outbound connection check confirming only official
-provider domains or localhost were contacted.
+The runner verifies known endpoint overrides, approved Google automation mode,
+and real task behavior. It does not perform packet capture. State this
+limitation explicitly. Production acceptance also requires a machine-level
+outbound connection check confirming only official provider domains or localhost
+were contacted.
 
-Unknown remote hosts, developer-hosted relays, unofficial mirrors, browser
-session extraction, or automatic account rotation are release blockers.
+Unknown remote hosts, developer-hosted relays, unofficial mirrors, personal
+Antigravity OAuth reuse, browser-session extraction, or automatic account
+rotation are release blockers.
