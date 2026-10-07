@@ -69,6 +69,7 @@ Required built-in provider id:
 ```yaml
 provider: codex
 provider: claude
+provider: antigravity
 provider: opencode
 provider: pi
 provider: cursor
@@ -79,8 +80,9 @@ provider: grok
 Unsupported or custom providers are rejected. DevSpace maps providers to their
 native integration:
 
-- `codex`: the host-installed `codex app-server` command
-- `claude`: Claude Code SDK
+- `codex`: the host-installed official `codex app-server` command
+- `claude`: the official Claude Agent SDK
+- `antigravity`: the host-installed official Google `agy` CLI in stream-JSON mode
 - `opencode`: OpenCode SDK
 - `pi`: the installed Pi coding-agent SDK, one in-process session per DevSpace agent
 - `cursor`: ACP
@@ -89,9 +91,14 @@ native integration:
 
 Codex is resolved from the user's environment rather than bundled with
 DevSpace. Run `codex login` normally before using it; set `CODEX_COMMAND` when
-the executable is not on the normal PATH. OpenCode, Cursor, and Copilot
-runtimes are started and reused by the daemon internally, while Pi is embedded
-through its Node SDK.
+the executable is not on the normal PATH. Antigravity follows the same local
+client model: install the official `agy` CLI, run it interactively once to
+complete Google Sign-In, and optionally set `ANTIGRAVITY_COMMAND` to the path of
+the official executable. The configured executable basename must remain `agy`
+under the YUNXU TrustBridge official-only policy.
+
+OpenCode, Cursor, Copilot, and Grok runtimes are started and reused by the
+daemon internally, while Pi is embedded through its Node SDK.
 
 ### `model`
 
@@ -100,6 +107,7 @@ Optional provider model id or alias.
 ```yaml
 model: gpt-5.4
 model: sonnet
+model: gemini-3-pro
 ```
 
 ### `effort`
@@ -118,6 +126,7 @@ DevSpace passes this through to providers that expose a matching control:
 
 - `claude`: SDK effort with adaptive thinking.
 - `codex`: app-server model reasoning effort.
+- `antigravity`: official `agy --effort` selection for the stream session.
 - `pi`: the AgentSession thinking-level control.
 - `opencode`: model variant.
 - `cursor` and `copilot`: ACP thought-level config when supported.
@@ -130,6 +139,26 @@ Optional boolean. Disabled profiles are not exposed.
 ```yaml
 disabled: true
 ```
+
+## Antigravity permission boundary
+
+The headless Antigravity integration uses one official `agy` process per durable
+DevSpace agent and communicates only through newline-delimited JSON on local
+stdin/stdout. Authentication remains in the official client and operating-system
+keyring; DevSpace stores only the provider conversation id.
+
+- Normal writable work should run in an isolated Git worktree and uses the
+  official Antigravity sandbox.
+- `full_access` explicitly adds the official
+  `--dangerously-skip-permissions` switch and should be reserved for a locally
+  approved task.
+- DevSpace rejects Antigravity `read_only` requests because the official
+  headless client does not currently expose a permission mode that DevSpace can
+  prove prevents every file write. Use Codex or another provider for enforced
+  read-only review.
+- Endpoint override variables are accepted only when they point to Google-owned
+  hosts or localhost. Third-party relays and developer-hosted gateways are
+  rejected before the provider starts.
 
 ## Markdown body
 
@@ -162,6 +191,7 @@ model-facing result small:
 
 ```xml
 <provider name="codex" model="gpt-5.4" effort="high"/>
+<provider name="antigravity" model="gemini-3-pro" effort="high"/>
 <profile name="reviewer" provider="codex">Read-only code review.</profile>
 <agent id="agt_123" status="running"/>
 <agent id="agt_123" status="completed">Review complete.</agent>
@@ -208,8 +238,8 @@ DevSpace keeps provider sessions warm while they are active or recently used,
 but persists only the provider session id and durable agent metadata. Native
 sharing follows the provider boundary: Codex uses one app-server across agents,
 OpenCode uses one server across sessions, ACP providers use one process across
-sessions, while Claude and Pi keep one warm runtime per DevSpace agent. There is
-one active turn per agent; different agents may run concurrently.
+sessions, while Claude, Pi, and Antigravity keep one warm runtime per DevSpace
+agent. There is one active turn per agent; different agents may run concurrently.
 
 If the daemon restarts during a turn, persisted `starting` and `running` agents
 become `error` with a restart message. The next `agents continue <id>` request can
