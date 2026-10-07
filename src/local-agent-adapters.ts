@@ -10,6 +10,7 @@ import {
   resolveAcpModelConfigUpdate,
   resolveAcpEffortConfigUpdate,
 } from "./local-agent-acp.js";
+import { AntigravityLocalAgentDriver } from "./local-agent-antigravity.js";
 import {
   ClaudeLocalAgentDriver,
   claudeCommandEnvironment,
@@ -52,6 +53,7 @@ export function createLocalAgentDrivers(
   return [
     new CodexLocalAgentDriver(providerEnv("codex")),
     new ClaudeLocalAgentDriver(options.claudeQueryFactory, providerEnv("claude")),
+    new AntigravityLocalAgentDriver(providerEnv("antigravity")),
     new OpencodeLocalAgentDriver(options.opencodeFactory, providerEnv("opencode")),
     new PiLocalAgentDriver(options.piSessionFactory, providerEnvOverrides("pi")),
     new AcpLocalAgentDriver("cursor", providerEnv("cursor")),
