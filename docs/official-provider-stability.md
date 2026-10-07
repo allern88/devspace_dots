@@ -1,7 +1,8 @@
 # YUNXU TrustBridge MCP official-provider verification
 
 This workflow verifies the locally installed official Codex, Claude, and Google
-Antigravity clients without copying provider credentials into DevSpace.
+automation clients without copying browser sessions or provider refresh tokens
+into DevSpace.
 
 ## Security model
 
@@ -15,24 +16,76 @@ Before a provider is shown or started, DevSpace checks known endpoint override
 variables. OpenAI endpoints must remain under `openai.com` or `chatgpt.com`,
 Anthropic endpoints under `anthropic.com` or `claude.ai`, and Google endpoints
 under Google-owned domains. Loopback endpoints are permitted for local
-inspection or a local-only gateway. Shared AI gateway variables and unknown
-remote hosts are blocked.
+inspection or a local-only gateway. Remote endpoints must use HTTPS and may not
+contain embedded usernames or passwords. Shared AI gateway variables and
+unknown remote hosts are blocked.
 
 The runner does not read browser cookies, access tokens, refresh tokens, or
-provider keyring entries. It launches the official local client exactly as an
-ordinary DevSpace subagent would. Report files retain only response SHA-256
-hashes and byte counts, not model response text.
+provider keyring entries. Report files retain only response SHA-256 hashes and
+byte counts, not model response text.
+
+## Google automation policy
+
+Do not use a personal Antigravity or Google AI Pro login through DevSpace.
+Google's current terms and FAQ prohibit third-party coding agents from reusing
+personal Antigravity OAuth. DevSpace therefore exposes the `antigravity`
+provider only when exactly one approved automation mode is configured:
+
+### Google AI Studio API key
+
+Set `GEMINI_API_KEY` in the Antigravity provider environment. Keep the key local;
+never paste it into a prompt, profile body, issue, or report.
+
+```jsonc
+{
+  "id": "antigravity",
+  "enabled": true,
+  "command": "agy",
+  "env": {
+    "GEMINI_API_KEY": "${GEMINI_API_KEY}"
+  }
+}
+```
+
+Use your normal secret-management mechanism to inject the real value. The
+literal example above is illustrative; do not commit a real key.
+
+### Gemini Enterprise / Google Cloud ADC
+
+Create Application Default Credentials for the approved Google Cloud project,
+then enable ADC for the official CLI:
+
+```bash
+gcloud auth application-default login --project YOUR_PROJECT
+```
+
+```jsonc
+{
+  "id": "antigravity",
+  "enabled": true,
+  "command": "agy",
+  "env": {
+    "AGY_ADC_AUTH": "true",
+    "GOOGLE_CLOUD_PROJECT": "YOUR_PROJECT",
+    "GOOGLE_CLOUD_LOCATION": "global"
+  }
+}
+```
+
+Do not configure both `GEMINI_API_KEY` and `AGY_ADC_AUTH=true`. DevSpace treats
+that as ambiguous and blocks the provider.
 
 ## Prerequisites
 
-1. Install and sign in to every provider that should be tested.
+1. Install and authenticate each provider through an approved official path.
 2. Enable those providers in `~/.devspace/config.jsonc`.
 3. Add the project directory to `workspaces.allowedRoots`.
-4. Run the commands from the project that the providers should use.
+4. Build DevSpace from the TrustBridge branch.
+5. Run the commands from the project that the providers should use.
 
-Antigravity requires the official `agy` command. Start `agy` interactively once
-to complete Google Sign-In. DevSpace uses its documented stream-JSON headless
-mode after that.
+Antigravity requires the official `agy` executable plus either an AI Studio API
+key or Gemini Enterprise ADC. A cached personal Antigravity login alone is not
+accepted by the TrustBridge policy.
 
 ## Five-run smoke test
 
@@ -96,6 +149,7 @@ The JSON report distinguishes:
 
 - provider not installed or not enabled;
 - provider blocked by official-only policy;
+- missing or ambiguous approved Google automation credentials;
 - start failure;
 - timeout;
 - provider execution failure;
@@ -113,6 +167,7 @@ It verifies:
 - the result returns through the local agent daemon;
 - provider session continuation works;
 - explicit third-party endpoint overrides are rejected;
+- personal Antigravity OAuth is not accepted as an automation credential;
 - no provider response text is written into the report.
 
 ## What requires a separate machine-level test
