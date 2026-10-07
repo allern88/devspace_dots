@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { Result } from "better-result";
 import {
   assertOfficialProviderTrust,
+  googleAutomationAuthMode,
   isAllowedEndpoint,
   officialProviderTrustDecision,
   withOfficialProviderTrust,
@@ -51,8 +52,21 @@ assert.equal(officialProviderTrustDecision("codex", {
 assert.equal(officialProviderTrustDecision("claude", {
   ANTHROPIC_BASE_URL: "https://api.anthropic.com",
 }).allowed, true);
+assert.equal(googleAutomationAuthMode({ GEMINI_API_KEY: "test-key" }), "ai-studio-api-key");
+assert.equal(googleAutomationAuthMode({ AGY_ADC_AUTH: "TRUE" }), "gemini-enterprise-adc");
+assert.equal(googleAutomationAuthMode({
+  GEMINI_API_KEY: "test-key",
+  AGY_ADC_AUTH: "true",
+}), "ambiguous");
+assert.equal(googleAutomationAuthMode({}), undefined);
 assert.equal(officialProviderTrustDecision("antigravity", {
   GEMINI_API_BASE_URL: "https://generativelanguage.googleapis.com/v1",
+  GEMINI_API_KEY: "test-key",
+}).allowed, true);
+assert.equal(officialProviderTrustDecision("antigravity", {
+  AGY_ADC_AUTH: "true",
+  GOOGLE_CLOUD_PROJECT: "test-project",
+  GOOGLE_CLOUD_LOCATION: "us",
 }).allowed, true);
 assert.equal(officialProviderTrustDecision("pi", {
   OPENAI_BASE_URL: "https://api.openai.com/v1",
@@ -60,12 +74,34 @@ assert.equal(officialProviderTrustDecision("pi", {
   GEMINI_API_BASE_URL: "https://generativelanguage.googleapis.com/v1",
 }).allowed, true);
 
+const missingGoogleAutomationAuth = officialProviderTrustDecision("antigravity", {
+  GEMINI_API_BASE_URL: "https://generativelanguage.googleapis.com/v1",
+});
+assert.equal(missingGoogleAutomationAuth.allowed, false);
+assert.match(missingGoogleAutomationAuth.reason ?? "", /requires GEMINI_API_KEY or AGY_ADC_AUTH=true/);
+assert.match(missingGoogleAutomationAuth.reason ?? "", /Personal Antigravity\/Google AI Pro OAuth/);
+
+const ambiguousGoogleAutomationAuth = officialProviderTrustDecision("antigravity", {
+  GEMINI_API_KEY: "must-not-appear",
+  AGY_ADC_AUTH: "true",
+});
+assert.equal(ambiguousGoogleAutomationAuth.allowed, false);
+assert.match(ambiguousGoogleAutomationAuth.reason ?? "", /either GEMINI_API_KEY.*or AGY_ADC_AUTH=true/);
+assert.doesNotMatch(ambiguousGoogleAutomationAuth.reason ?? "", /must-not-appear/);
+
 for (const [provider, env, variable] of [
   ["codex", { OPENAI_BASE_URL: "https://developer-relay.example/v1" }, "OPENAI_BASE_URL"],
   ["codex", { OPENAI_BASE_URL: "http://api.openai.com/v1" }, "OPENAI_BASE_URL"],
   ["codex", { OPENAI_BASE_URL: "https://user:password@api.openai.com/v1" }, "OPENAI_BASE_URL"],
   ["claude", { ANTHROPIC_BASE_URL: "https://developer-relay.example/v1" }, "ANTHROPIC_BASE_URL"],
-  ["antigravity", { GEMINI_API_BASE_URL: "https://developer-relay.example/v1" }, "GEMINI_API_BASE_URL"],
+  [
+    "antigravity",
+    {
+      GEMINI_API_BASE_URL: "https://developer-relay.example/v1",
+      GEMINI_API_KEY: "test-key",
+    },
+    "GEMINI_API_BASE_URL",
+  ],
   ["pi", { AI_GATEWAY_URL: "https://developer-relay.example/v1" }, "AI_GATEWAY_URL"],
   ["pi", { AI_GATEWAY_URL: "http://user:password@127.0.0.1:4000" }, "AI_GATEWAY_URL"],
 ] as const) {
