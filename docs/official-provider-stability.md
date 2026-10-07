@@ -29,26 +29,55 @@ byte counts, not model response text.
 Do not use a personal Antigravity or Google AI Pro login through DevSpace.
 Google's current terms and FAQ prohibit third-party coding agents from reusing
 personal Antigravity OAuth. DevSpace therefore exposes the `antigravity`
-provider only when exactly one approved automation mode is configured:
+provider only when exactly one approved automation mode is configured.
 
 ### Google AI Studio API key
 
-Set `GEMINI_API_KEY` in the Antigravity provider environment. Keep the key local;
-never paste it into a prompt, profile body, issue, or report.
+The official CLI requires both an API key and an explicit Gemini provider
+selection. Create or update:
+
+```text
+~/.gemini/antigravity-cli/settings.json
+```
+
+```json
+{
+  "modelProvider": "gemini"
+}
+```
+
+Then inject `GEMINI_API_KEY` into the environment that starts DevSpace or
+`devspace-agentd`. Do not put the real key in a profile, prompt, issue, Git
+commit, screenshot, or report.
+
+PowerShell example for the current terminal only:
+
+```powershell
+$env:GEMINI_API_KEY = "YOUR_LOCAL_SECRET"
+pnpm test:official-providers
+```
+
+Bash example for the current shell only:
+
+```bash
+export GEMINI_API_KEY="YOUR_LOCAL_SECRET"
+pnpm test:official-providers
+```
+
+The key by itself is insufficient. TrustBridge reads the official CLI settings
+file and blocks API-key mode unless `modelProvider` is exactly `gemini`. This
+prevents an API key from being present while the CLI silently uses another
+configured authentication path.
+
+The DevSpace provider entry can remain free of secrets:
 
 ```jsonc
 {
   "id": "antigravity",
   "enabled": true,
-  "command": "agy",
-  "env": {
-    "GEMINI_API_KEY": "${GEMINI_API_KEY}"
-  }
+  "command": "agy"
 }
 ```
-
-Use your normal secret-management mechanism to inject the real value. The
-literal example above is illustrative; do not commit a real key.
 
 ### Gemini Enterprise / Google Cloud ADC
 
@@ -79,13 +108,14 @@ that as ambiguous and blocks the provider.
 
 1. Install and authenticate each provider through an approved official path.
 2. Enable those providers in `~/.devspace/config.jsonc`.
-3. Add the project directory to `workspaces.allowedRoots`.
-4. Build DevSpace from the TrustBridge branch.
-5. Run the commands from the project that the providers should use.
+3. For AI Studio, set `modelProvider: "gemini"` in the official Antigravity CLI settings file before injecting the key.
+4. Add the project directory to `workspaces.allowedRoots`.
+5. Build DevSpace from the TrustBridge branch.
+6. Run the commands from the project that the providers should use.
 
-Antigravity requires the official `agy` executable plus either an AI Studio API
-key or Gemini Enterprise ADC. A cached personal Antigravity login alone is not
-accepted by the TrustBridge policy.
+Antigravity requires the official `agy` executable plus either correctly
+configured AI Studio API-key mode or Gemini Enterprise ADC. A cached personal
+Antigravity login alone is not accepted by the TrustBridge policy.
 
 ## Five-run smoke test
 
@@ -150,6 +180,7 @@ The JSON report distinguishes:
 - provider not installed or not enabled;
 - provider blocked by official-only policy;
 - missing or ambiguous approved Google automation credentials;
+- missing, invalid, or non-Gemini official CLI settings for API-key mode;
 - start failure;
 - timeout;
 - provider execution failure;
@@ -168,6 +199,7 @@ It verifies:
 - provider session continuation works;
 - explicit third-party endpoint overrides are rejected;
 - personal Antigravity OAuth is not accepted as an automation credential;
+- AI Studio API-key mode has the required official CLI provider selection;
 - no provider response text is written into the report.
 
 ## What requires a separate machine-level test
