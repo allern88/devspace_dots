@@ -166,6 +166,15 @@ try {
       },
       "GEMINI_API_BASE_URL",
     ],
+    [
+      "antigravity",
+      {
+        HOME: geminiHome,
+        GOOGLE_GEMINI_BASE_URL: "https://developer-relay.example/v1",
+        GEMINI_API_KEY: "test-key",
+      },
+      "GOOGLE_GEMINI_BASE_URL",
+    ],
     ["pi", { AI_GATEWAY_URL: "https://developer-relay.example/v1" }, "AI_GATEWAY_URL"],
     ["pi", { AI_GATEWAY_URL: "http://user:password@127.0.0.1:4000" }, "AI_GATEWAY_URL"],
   ] as const) {
