@@ -60,6 +60,7 @@ const GOOGLE_RULE: EndpointRule = {
     "GEMINI_API_BASE",
     "GEMINI_API_BASE_URL",
     "GOOGLE_API_BASE_URL",
+    "GOOGLE_GEMINI_BASE_URL",
   ],
   officialDomains: [
     "google.com",
