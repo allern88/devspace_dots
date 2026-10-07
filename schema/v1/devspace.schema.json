@@ -186,6 +186,7 @@
                     "enum": [
                       "codex",
                       "claude",
+                      "antigravity",
                       "cursor",
                       "copilot",
                       "grok"
