@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,14 +39,14 @@ function testPackedPackageLaunchers(): void {
       workspaces: { allowedRoots: [root], worktreeRoot: join(root, "worktrees") },
       skills: { agentDir: join(root, "agents") },
     });
-    const cliOutput = execInstalledBin(installRoot, "devspace", ["config", "get"], {
+    const cliOutput = execInstalledPackageBin(installRoot, "devspace", ["config", "get"], {
       ...process.env,
       ...env,
     });
     const config = JSON.parse(cliOutput) as { tools?: { mode?: string } };
     assert.equal(config.tools?.mode, "codex");
 
-    execInstalledBin(installRoot, "devspace-agentd", [], {
+    execInstalledPackageBin(installRoot, "devspace-agentd", [], {
       ...process.env,
       ...env,
       DEVSPACE_AGENTD_IDLE_TIMEOUT_MS: "0",
@@ -61,19 +61,29 @@ function npmExecutable(): string {
   return process.platform === "win32" ? "npm.cmd" : "npm";
 }
 
-function execInstalledBin(
+function execInstalledPackageBin(
   installRoot: string,
-  name: string,
+  name: "devspace" | "devspace-agentd",
   args: string[],
   env: NodeJS.ProcessEnv,
 ): string {
-  const executable = join(
-    installRoot,
-    "node_modules",
-    ".bin",
-    process.platform === "win32" ? `${name}.cmd` : name,
+  const packageRoot = join(installRoot, "node_modules", "@waishnav", "devspace");
+  const entrypoint = join(
+    packageRoot,
+    "bin",
+    name === "devspace" ? "devspace.js" : "devspace-agentd.js",
   );
-  return execCommand(executable, args, { env });
+  assert.equal(
+    existsSync(entrypoint),
+    true,
+    `packed package must contain ${entrypoint}`,
+  );
+  return execFileSync(process.execPath, [entrypoint, ...args], {
+    encoding: "utf8",
+    env,
+    stdio: "pipe",
+    windowsHide: true,
+  });
 }
 
 function execCommand(
