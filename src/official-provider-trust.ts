@@ -1,4 +1,8 @@
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { Result } from "better-result";
+import { parse as parseJsonc, type ParseError } from "jsonc-parser";
 import { AgentProviderUnavailableError } from "./local-agent-errors.js";
 import type { LocalAgentProvider } from "./local-agent-profiles.js";
 import type {
@@ -13,6 +17,12 @@ export interface ProviderTrustDecision {
 }
 
 export type GoogleAutomationAuthMode = "ai-studio-api-key" | "gemini-enterprise-adc";
+
+export interface GoogleAutomationConfigurationDecision {
+  mode?: GoogleAutomationAuthMode;
+  allowed: boolean;
+  reason?: string;
+}
 
 interface EndpointRule {
   variables: readonly string[];
@@ -110,17 +120,11 @@ export function officialProviderTrustDecision(
   }
 
   if (provider === "antigravity") {
-    const auth = googleAutomationAuthMode(env);
-    if (auth === "ambiguous") {
+    const configuration = googleAutomationConfigurationDecision(env);
+    if (!configuration.allowed) {
       return blocked(
         checkedVariables,
-        "Official-only policy rejected ambiguous Google automation credentials. Configure either GEMINI_API_KEY for Google AI Studio or AGY_ADC_AUTH=true for Gemini Enterprise ADC, not both.",
-      );
-    }
-    if (!auth) {
-      return blocked(
-        checkedVariables,
-        "Automated Antigravity access requires GEMINI_API_KEY or AGY_ADC_AUTH=true. Personal Antigravity/Google AI Pro OAuth must remain inside Google's own interactive products and is not used by DevSpace.",
+        configuration.reason ?? "Google automation configuration is not approved.",
       );
     }
   }
@@ -137,6 +141,54 @@ export function googleAutomationAuthMode(
   if (hasEnterpriseAdc) return "gemini-enterprise-adc";
   if (hasApiKey) return "ai-studio-api-key";
   return undefined;
+}
+
+export function googleAutomationConfigurationDecision(
+  env: NodeJS.ProcessEnv = process.env,
+): GoogleAutomationConfigurationDecision {
+  const auth = googleAutomationAuthMode(env);
+  if (auth === "ambiguous") {
+    return {
+      allowed: false,
+      reason:
+        "Official-only policy rejected ambiguous Google automation credentials. Configure either GEMINI_API_KEY for Google AI Studio or AGY_ADC_AUTH=true for Gemini Enterprise ADC, not both.",
+    };
+  }
+  if (!auth) {
+    return {
+      allowed: false,
+      reason:
+        "Automated Antigravity access requires GEMINI_API_KEY or AGY_ADC_AUTH=true. Personal Antigravity/Google AI Pro OAuth must remain inside Google's own interactive products and is not used by DevSpace.",
+    };
+  }
+  if (auth === "gemini-enterprise-adc") {
+    return { allowed: true, mode: auth };
+  }
+
+  const settings = readAntigravitySettings(env);
+  if (!settings.ok) {
+    return {
+      allowed: false,
+      mode: auth,
+      reason: settings.reason,
+    };
+  }
+  if (settings.value.modelProvider !== "gemini") {
+    return {
+      allowed: false,
+      mode: auth,
+      reason:
+        "GEMINI_API_KEY requires ~/.gemini/antigravity-cli/settings.json to set modelProvider to 'gemini'; otherwise the official CLI may use a different authentication path.",
+    };
+  }
+  return { allowed: true, mode: auth };
+}
+
+export function antigravitySettingsPath(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const home = env.HOME?.trim() || env.USERPROFILE?.trim() || homedir();
+  return join(home, ".gemini", "antigravity-cli", "settings.json");
 }
 
 export function assertOfficialProviderTrust(
@@ -190,7 +242,7 @@ export function withOfficialProviderTrust(
           retryable: false,
           cause: result.error,
           message:
-            "Google automation authentication failed. Verify GEMINI_API_KEY or Gemini Enterprise ADC with AGY_ADC_AUTH=true. Personal Antigravity/Google AI Pro OAuth is not supported through DevSpace.",
+            "Google automation authentication failed. Verify GEMINI_API_KEY with modelProvider='gemini', or Gemini Enterprise ADC with AGY_ADC_AUTH=true. Personal Antigravity/Google AI Pro OAuth is not supported through DevSpace.",
         }));
       }
       return result;
@@ -234,6 +286,37 @@ function providerRules(provider: LocalAgentProvider): EndpointRule[] {
   }
 }
 
+function readAntigravitySettings(
+  env: NodeJS.ProcessEnv,
+):
+  | { ok: true; value: Record<string, unknown> }
+  | { ok: false; reason: string } {
+  let source: string;
+  try {
+    source = readFileSync(antigravitySettingsPath(env), "utf8").replace(/^\uFEFF/u, "");
+  } catch {
+    return {
+      ok: false,
+      reason:
+        "GEMINI_API_KEY requires ~/.gemini/antigravity-cli/settings.json with modelProvider set to 'gemini'; the settings file could not be read.",
+    };
+  }
+
+  const errors: ParseError[] = [];
+  const parsed = parseJsonc(source, errors, {
+    allowTrailingComma: true,
+    disallowComments: false,
+  });
+  if (errors.length > 0 || !isRecord(parsed)) {
+    return {
+      ok: false,
+      reason:
+        "GEMINI_API_KEY requires a valid ~/.gemini/antigravity-cli/settings.json with modelProvider set to 'gemini'.",
+    };
+  }
+  return { ok: true, value: parsed };
+}
+
 function parseEndpoint(value: string): URL | undefined {
   try {
     return new URL(value);
@@ -261,6 +344,10 @@ function normalizeHost(host: string): string {
 function isAuthenticationFailure(message: string): boolean {
   return /authentication|required.*auth|sign[ -]?in|invalid.*credential|unauthori[sz]ed|forbidden|\b401\b|\b403\b/iu
     .test(message);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function blocked(checkedVariables: string[], reason: string): ProviderTrustDecision {
