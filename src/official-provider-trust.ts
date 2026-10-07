@@ -12,6 +12,8 @@ export interface ProviderTrustDecision {
   reason?: string;
 }
 
+export type GoogleAutomationAuthMode = "ai-studio-api-key" | "gemini-enterprise-adc";
+
 interface EndpointRule {
   variables: readonly string[];
   officialDomains: readonly string[];
@@ -64,6 +66,14 @@ const COMMON_RELAY_VARIABLES = [
   "OPENAI_COMPATIBLE_BASE_URL",
 ] as const;
 
+const GOOGLE_AUTOMATION_AUTH_VARIABLES = [
+  "GEMINI_API_KEY",
+  "AGY_ADC_AUTH",
+  "GOOGLE_CLOUD_PROJECT",
+  "GOOGLE_CLOUD_QUOTA_PROJECT",
+  "GOOGLE_CLOUD_LOCATION",
+] as const;
+
 export function officialProviderTrustDecision(
   provider: LocalAgentProvider,
   env: NodeJS.ProcessEnv = process.env,
@@ -73,6 +83,7 @@ export function officialProviderTrustDecision(
     ...new Set([
       ...rules.flatMap((rule) => rule.variables),
       ...COMMON_RELAY_VARIABLES,
+      ...(provider === "antigravity" ? GOOGLE_AUTOMATION_AUTH_VARIABLES : []),
     ]),
   ];
 
@@ -98,7 +109,34 @@ export function officialProviderTrustDecision(
     }
   }
 
+  if (provider === "antigravity") {
+    const auth = googleAutomationAuthMode(env);
+    if (auth === "ambiguous") {
+      return blocked(
+        checkedVariables,
+        "Official-only policy rejected ambiguous Google automation credentials. Configure either GEMINI_API_KEY for Google AI Studio or AGY_ADC_AUTH=true for Gemini Enterprise ADC, not both.",
+      );
+    }
+    if (!auth) {
+      return blocked(
+        checkedVariables,
+        "Automated Antigravity access requires GEMINI_API_KEY or AGY_ADC_AUTH=true. Personal Antigravity/Google AI Pro OAuth must remain inside Google's own interactive products and is not used by DevSpace.",
+      );
+    }
+  }
+
   return { allowed: true, checkedVariables };
+}
+
+export function googleAutomationAuthMode(
+  env: NodeJS.ProcessEnv = process.env,
+): GoogleAutomationAuthMode | "ambiguous" | undefined {
+  const hasApiKey = Boolean(env.GEMINI_API_KEY?.trim());
+  const hasEnterpriseAdc = env.AGY_ADC_AUTH?.trim().toLowerCase() === "true";
+  if (hasApiKey && hasEnterpriseAdc) return "ambiguous";
+  if (hasEnterpriseAdc) return "gemini-enterprise-adc";
+  if (hasApiKey) return "ai-studio-api-key";
+  return undefined;
 }
 
 export function assertOfficialProviderTrust(
