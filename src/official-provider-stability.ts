@@ -131,13 +131,16 @@ export async function runOfficialProviderStability(
   const providers: OfficialProviderStabilityResult[] = [];
 
   for (const provider of options.providers) {
-    const trust = officialProviderTrustDecision(provider, env);
-    if (!trust.allowed || !targets.has(provider)) {
+    const installedAndEnabled = targets.has(provider);
+    const processTrust = officialProviderTrustDecision(provider, env);
+    const trustPolicyAllowed = installedAndEnabled || processTrust.allowed;
+    const trustPolicyReason = installedAndEnabled ? undefined : processTrust.reason;
+    if (!installedAndEnabled) {
       providers.push({
         provider,
-        installedAndEnabled: targets.has(provider),
-        trustPolicyAllowed: trust.allowed,
-        ...(trust.reason ? { trustPolicyReason: trust.reason } : {}),
+        installedAndEnabled,
+        trustPolicyAllowed,
+        ...(trustPolicyReason ? { trustPolicyReason } : {}),
         runs: [],
         continuation: { status: "not_run" },
         passed: 0,
@@ -288,9 +291,10 @@ export function renderOfficialProviderReport(
     "",
     "## Security evidence",
     "",
-    "- Provider credentials remained with the official client or operating-system keyring.",
+    "- Provider credentials remained with the official client, local environment, or operating-system keyring.",
     "- Provider response text was not written to the report; only SHA-256 and byte counts were retained.",
     "- Known endpoint override variables were checked against official provider domains or localhost.",
+    "- A provider present in the DevSpace target catalog has already passed its provider-specific configured trust preflight; the runner process may not inherit provider-only secrets.",
     "- This runner does not perform packet-level network capture. Packet-level egress verification remains a separate machine-level acceptance test.",
     "",
   ].join("\n");
