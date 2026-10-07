@@ -93,7 +93,7 @@ export function officialProviderTrustDecision(
       if (isAllowedEndpoint(value, rule.officialDomains)) continue;
       return blocked(
         checkedVariables,
-        `Official-only policy rejected ${variable}; ${provider} may use only its official provider endpoints or localhost.`,
+        `Official-only policy rejected ${variable}; ${provider} may use only credential-free HTTPS official provider endpoints or localhost.`,
       );
     }
   }
@@ -147,23 +147,18 @@ export function isAllowedEndpoint(
   value: string,
   officialDomains: readonly string[],
 ): boolean {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return false;
-  }
+  const url = parseEndpoint(value);
+  if (!url || hasEmbeddedCredentials(url)) return false;
   const host = normalizeHost(url.hostname);
-  if (isLocalHost(host)) return true;
+  if (isLocalHost(host)) return isHttpProtocol(url.protocol);
+  if (url.protocol !== "https:") return false;
   return officialDomains.some((domain) => host === domain || host.endsWith(`.${domain}`));
 }
 
 export function isLocalEndpoint(value: string): boolean {
-  try {
-    return isLocalHost(normalizeHost(new URL(value).hostname));
-  } catch {
-    return false;
-  }
+  const url = parseEndpoint(value);
+  if (!url || hasEmbeddedCredentials(url) || !isHttpProtocol(url.protocol)) return false;
+  return isLocalHost(normalizeHost(url.hostname));
 }
 
 function providerRules(provider: LocalAgentProvider): EndpointRule[] {
@@ -182,6 +177,22 @@ function providerRules(provider: LocalAgentProvider): EndpointRule[] {
     case "grok":
       return [];
   }
+}
+
+function parseEndpoint(value: string): URL | undefined {
+  try {
+    return new URL(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function hasEmbeddedCredentials(url: URL): boolean {
+  return url.username.length > 0 || url.password.length > 0;
+}
+
+function isHttpProtocol(protocol: string): boolean {
+  return protocol === "http:" || protocol === "https:";
 }
 
 function isLocalHost(host: string): boolean {
