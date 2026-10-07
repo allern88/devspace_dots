@@ -176,7 +176,24 @@ export function withOfficialProviderTrust(
           message: decision.reason ?? "Provider blocked by official-only policy.",
         }));
       }
-      return driver.createRuntime(context);
+      const result = await driver.createRuntime(context);
+      if (
+        driver.provider === "antigravity"
+        && result.isErr()
+        && isAuthenticationFailure(result.error.message)
+      ) {
+        return Result.err(new AgentProviderUnavailableError({
+          code: "PROVIDER_UNAVAILABLE",
+          provider: "antigravity",
+          agentId: context.agentId,
+          operation: result.error.operation,
+          retryable: false,
+          cause: result.error,
+          message:
+            "Google automation authentication failed. Verify GEMINI_API_KEY or Gemini Enterprise ADC with AGY_ADC_AUTH=true. Personal Antigravity/Google AI Pro OAuth is not supported through DevSpace.",
+        }));
+      }
+      return result;
     },
   };
 }
@@ -239,6 +256,11 @@ function isLocalHost(host: string): boolean {
 
 function normalizeHost(host: string): string {
   return host.toLowerCase().replace(/^\[|\]$/gu, "").replace(/\.$/u, "");
+}
+
+function isAuthenticationFailure(message: string): boolean {
+  return /authentication|required.*auth|sign[ -]?in|invalid.*credential|unauthori[sz]ed|forbidden|\b401\b|\b403\b/iu
+    .test(message);
 }
 
 function blocked(checkedVariables: string[], reason: string): ProviderTrustDecision {
