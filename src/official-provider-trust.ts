@@ -187,7 +187,9 @@ export function googleAutomationConfigurationDecision(
 export function antigravitySettingsPath(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  const home = env.HOME?.trim() || env.USERPROFILE?.trim() || homedir();
+  const home = process.platform === "win32"
+    ? env.USERPROFILE?.trim() || env.HOME?.trim() || homedir()
+    : env.HOME?.trim() || env.USERPROFILE?.trim() || homedir();
   return join(home, ".gemini", "antigravity-cli", "settings.json");
 }
 
