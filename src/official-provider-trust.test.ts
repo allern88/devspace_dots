@@ -21,6 +21,7 @@ for (const url of [
   "https://accounts.google.com",
   "https://antigravity.google",
   "http://127.0.0.1:8317/v1",
+  "https://127.0.0.1:8317/v1",
   "http://localhost:4000",
 ]) {
   const domains = url.includes("openai")
@@ -32,14 +33,17 @@ for (const url of [
         : [];
   assert.equal(isAllowedEndpoint(url, domains), true, url);
 }
-assert.equal(
-  isAllowedEndpoint("https://openai.com.attacker.example/v1", ["openai.com"]),
-  false,
-);
-assert.equal(
-  isAllowedEndpoint("https://developer-relay.example/v1", ["openai.com"]),
-  false,
-);
+for (const url of [
+  "https://openai.com.attacker.example/v1",
+  "https://developer-relay.example/v1",
+  "http://api.openai.com/v1",
+  "ftp://api.openai.com/v1",
+  "https://user:password@api.openai.com/v1",
+  "http://user:password@127.0.0.1:8317/v1",
+  "not-a-url",
+]) {
+  assert.equal(isAllowedEndpoint(url, ["openai.com"]), false, url);
+}
 
 assert.equal(officialProviderTrustDecision("codex", {
   OPENAI_BASE_URL: "https://api.openai.com/v1",
@@ -58,9 +62,12 @@ assert.equal(officialProviderTrustDecision("pi", {
 
 for (const [provider, env, variable] of [
   ["codex", { OPENAI_BASE_URL: "https://developer-relay.example/v1" }, "OPENAI_BASE_URL"],
+  ["codex", { OPENAI_BASE_URL: "http://api.openai.com/v1" }, "OPENAI_BASE_URL"],
+  ["codex", { OPENAI_BASE_URL: "https://user:password@api.openai.com/v1" }, "OPENAI_BASE_URL"],
   ["claude", { ANTHROPIC_BASE_URL: "https://developer-relay.example/v1" }, "ANTHROPIC_BASE_URL"],
   ["antigravity", { GEMINI_API_BASE_URL: "https://developer-relay.example/v1" }, "GEMINI_API_BASE_URL"],
   ["pi", { AI_GATEWAY_URL: "https://developer-relay.example/v1" }, "AI_GATEWAY_URL"],
+  ["pi", { AI_GATEWAY_URL: "http://user:password@127.0.0.1:4000" }, "AI_GATEWAY_URL"],
 ] as const) {
   const decision = officialProviderTrustDecision(provider, env);
   assert.equal(decision.allowed, false);
