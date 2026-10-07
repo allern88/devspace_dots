@@ -18,3 +18,23 @@ for (const provider of ["codex", "claude", "opencode", "pi", "cursor", "copilot"
     `legacy provider ${provider} should retain its enabled state`,
   );
 }
+
+assert.equal(
+  migrateLegacyConfig({ toolMode: "claude" }).tools.mode,
+  "claude",
+  "camelCase legacy toolMode must migrate",
+);
+assert.equal(
+  migrateLegacyConfig({ tool_mode: "claude" }).tools.mode,
+  "claude",
+  "snake_case legacy tool_mode must migrate",
+);
+assert.equal(
+  migrateLegacyConfig({
+    tool_mode: "claude",
+    toolMode: "claude",
+    tools: { mode: "codex" },
+  }).tools.mode,
+  "codex",
+  "structured tools.mode must take precedence over legacy aliases",
+);
