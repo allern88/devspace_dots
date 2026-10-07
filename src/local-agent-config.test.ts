@@ -19,6 +19,14 @@ const config = subagentsConfigSchema.parse({
       env: { OPENAI_API_KEY: "configured", EMPTY_VALUE: "" },
     },
     { id: "claude", enabled: false, model: "sonnet" },
+    {
+      id: "antigravity",
+      enabled: true,
+      model: " gemini-3-pro ",
+      effort: " medium ",
+      command: " /opt/google/agy ",
+      env: { ANTIGRAVITY_BASE_URL: "https://antigravity.google" },
+    },
   ],
 });
 assert.deepEqual(config, {
@@ -34,12 +42,22 @@ assert.deepEqual(config, {
       env: { OPENAI_API_KEY: "configured", EMPTY_VALUE: "" },
     },
     { id: "claude", enabled: false, model: "sonnet" },
+    {
+      id: "antigravity",
+      enabled: true,
+      model: "gemini-3-pro",
+      effort: "medium",
+      command: "/opt/google/agy",
+      env: { ANTIGRAVITY_BASE_URL: "https://antigravity.google" },
+    },
   ],
 });
 assert.equal(isSubagentProviderEnabled(config, "codex"), true);
 assert.equal(isSubagentProviderEnabled(config, "claude"), false);
+assert.equal(isSubagentProviderEnabled(config, "antigravity"), true);
 assert.equal(isSubagentProviderEnabled(config, "pi"), false);
 assert.equal(subagentProviderConfig(config, "codex")?.model, "gpt-5.4");
+assert.equal(subagentProviderConfig(config, "antigravity")?.model, "gemini-3-pro");
 assert.equal(
   subagentsConfigSchema.parse({ enabled: true, instructions: "preload", providers: [] }).instructions,
   "preload",
@@ -47,17 +65,27 @@ assert.equal(
 
 const inherited = {
   CODEX_COMMAND: "/usr/bin/codex",
+  ANTIGRAVITY_COMMAND: "/usr/bin/agy",
   OPENAI_API_KEY: "inherited",
   UNCHANGED: "yes",
 };
 assert.deepEqual(localAgentProviderEnvironment(config, "codex", inherited), {
   CODEX_COMMAND: "/opt/bin/codex-wrapper",
+  ANTIGRAVITY_COMMAND: "/usr/bin/agy",
   OPENAI_API_KEY: "configured",
   EMPTY_VALUE: "",
   UNCHANGED: "yes",
 });
+assert.deepEqual(localAgentProviderEnvironment(config, "antigravity", inherited), {
+  CODEX_COMMAND: "/usr/bin/codex",
+  ANTIGRAVITY_COMMAND: "/opt/google/agy",
+  OPENAI_API_KEY: "inherited",
+  ANTIGRAVITY_BASE_URL: "https://antigravity.google",
+  UNCHANGED: "yes",
+});
 assert.deepEqual(inherited, {
   CODEX_COMMAND: "/usr/bin/codex",
+  ANTIGRAVITY_COMMAND: "/usr/bin/agy",
   OPENAI_API_KEY: "inherited",
   UNCHANGED: "yes",
 });
@@ -66,6 +94,14 @@ assert.equal(
   localAgentProviderConfigRevision(subagentsConfigSchema.parse({
     enabled: true,
     providers: [
+      {
+        id: "antigravity",
+        enabled: true,
+        command: "/opt/google/agy",
+        model: "gemini-3-pro",
+        effort: "medium",
+        env: { ANTIGRAVITY_BASE_URL: "https://antigravity.google" },
+      },
       { id: "claude", enabled: false, model: "sonnet" },
       {
         id: "codex",
@@ -105,14 +141,14 @@ assert.throws(
 assert.throws(
   () => subagentsConfigSchema.parse({
     enabled: true,
-    providers: [{ id: "codex", enabled: true, effort: "  " }],
+    providers: [{ id: "antigravity", enabled: true, effort: "  " }],
   }),
   /Too small/,
 );
 assert.throws(
   () => subagentsConfigSchema.parse({
     enabled: true,
-    providers: [{ id: "codex", enabled: true, command: "  " }],
+    providers: [{ id: "antigravity", enabled: true, command: "  " }],
   }),
   /non-whitespace character/,
 );
