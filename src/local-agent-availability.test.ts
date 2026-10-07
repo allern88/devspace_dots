@@ -8,6 +8,8 @@ const snapshot = getLocalAgentProviderAvailabilitySnapshot({
   ...process.env,
   CODEX_COMMAND: "/definitely/missing/devspace-codex",
   ANTIGRAVITY_COMMAND: "/definitely/missing/devspace-agy",
+  GEMINI_API_KEY: "test-key",
+  AGY_ADC_AUTH: "",
 });
 assert.deepEqual(snapshot.find((provider) => provider.name === "codex"), {
   name: "codex",
@@ -24,9 +26,21 @@ assert.equal(
     ...process.env,
     CODEX_COMMAND: "",
     ANTIGRAVITY_COMMAND: "",
+    GEMINI_API_KEY: "test-key",
+    AGY_ADC_AUTH: "",
   }).find((provider) => provider.name === "codex")?.available,
   false,
 );
+
+const personalOauthOnly = getLocalAgentProviderAvailabilitySnapshot({
+  ...process.env,
+  ANTIGRAVITY_COMMAND: "/usr/bin/agy",
+  GEMINI_API_KEY: "",
+  AGY_ADC_AUTH: "",
+}).find((provider) => provider.name === "antigravity");
+assert.equal(personalOauthOnly?.available, false);
+assert.equal(personalOauthOnly?.note, "blocked_by_trust_policy");
+assert.match(personalOauthOnly?.reason ?? "", /Personal Antigravity\/Google AI Pro OAuth/);
 
 {
   const directory = mkdtempSync(join(tmpdir(), "devspace-provider-command-"));
@@ -41,6 +55,8 @@ assert.equal(
         ...process.env,
         CODEX_COMMAND: directory,
         ANTIGRAVITY_COMMAND: directory,
+        GEMINI_API_KEY: "test-key",
+        AGY_ADC_AUTH: "",
       }).find((provider) => provider.name === "codex")?.available,
       false,
     );
@@ -65,7 +81,11 @@ assert.equal(
           id: "antigravity" as const,
           enabled: true,
           command: antigravityExecutable,
-          env: { ANTIGRAVITY_BASE_URL: "https://antigravity.google" },
+          env: {
+            ANTIGRAVITY_BASE_URL: "https://antigravity.google",
+            GEMINI_API_KEY: "configured-google-secret",
+            AGY_ADC_AUTH: "",
+          },
         },
       ],
     };
@@ -75,6 +95,8 @@ assert.equal(
         CODEX_COMMAND: "/definitely/missing/devspace-codex",
         ANTIGRAVITY_COMMAND: "/definitely/missing/devspace-agy",
         OPENAI_API_KEY: "must-not-appear",
+        GEMINI_API_KEY: "must-not-appear-either",
+        AGY_ADC_AUTH: "",
       },
       providerConfig,
     );
@@ -89,7 +111,7 @@ assert.equal(
     });
     assert.doesNotMatch(
       JSON.stringify(availability),
-      /configured-secret|must-not-appear/,
+      /configured-secret|must-not-appear|configured-google-secret/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
