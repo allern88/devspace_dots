@@ -37,6 +37,12 @@ function checkLocalAgentProviderAvailability(
       return providerEnv.CLAUDE_COMMAND
         ? commandAvailability(provider, providerEnv.CLAUDE_COMMAND, providerEnv)
         : packageAvailability(provider, "@anthropic-ai/claude-agent-sdk");
+    case "antigravity":
+      return commandAvailability(
+        provider,
+        providerEnv.ANTIGRAVITY_COMMAND ?? "agy",
+        providerEnv,
+      );
     case "opencode":
       return packageAvailability(provider, "@opencode-ai/sdk/v2");
     case "pi":
