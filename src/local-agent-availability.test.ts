@@ -8,8 +8,8 @@ const snapshot = getLocalAgentProviderAvailabilitySnapshot({
   ...process.env,
   CODEX_COMMAND: "/definitely/missing/devspace-codex",
   ANTIGRAVITY_COMMAND: "/definitely/missing/devspace-agy",
-  GEMINI_API_KEY: "test-key",
-  AGY_ADC_AUTH: "",
+  GEMINI_API_KEY: "",
+  AGY_ADC_AUTH: "true",
 });
 assert.deepEqual(snapshot.find((provider) => provider.name === "codex"), {
   name: "codex",
@@ -26,8 +26,8 @@ assert.equal(
     ...process.env,
     CODEX_COMMAND: "",
     ANTIGRAVITY_COMMAND: "",
-    GEMINI_API_KEY: "test-key",
-    AGY_ADC_AUTH: "",
+    GEMINI_API_KEY: "",
+    AGY_ADC_AUTH: "true",
   }).find((provider) => provider.name === "codex")?.available,
   false,
 );
@@ -55,8 +55,8 @@ assert.match(personalOauthOnly?.reason ?? "", /Personal Antigravity\/Google AI P
         ...process.env,
         CODEX_COMMAND: directory,
         ANTIGRAVITY_COMMAND: directory,
-        GEMINI_API_KEY: "test-key",
-        AGY_ADC_AUTH: "",
+        GEMINI_API_KEY: "",
+        AGY_ADC_AUTH: "true",
       }).find((provider) => provider.name === "codex")?.available,
       false,
     );
@@ -83,8 +83,8 @@ assert.match(personalOauthOnly?.reason ?? "", /Personal Antigravity\/Google AI P
           command: antigravityExecutable,
           env: {
             ANTIGRAVITY_BASE_URL: "https://antigravity.google",
-            GEMINI_API_KEY: "configured-google-secret",
-            AGY_ADC_AUTH: "",
+            GEMINI_API_KEY: "",
+            AGY_ADC_AUTH: "true",
           },
         },
       ],
@@ -111,7 +111,7 @@ assert.match(personalOauthOnly?.reason ?? "", /Personal Antigravity\/Google AI P
     });
     assert.doesNotMatch(
       JSON.stringify(availability),
-      /configured-secret|must-not-appear|configured-google-secret/,
+      /configured-secret|must-not-appear/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
