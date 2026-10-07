@@ -3,6 +3,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getLocalAgentProviderAvailabilitySnapshot } from "./local-agent-availability.js";
+import type { SubagentsConfig } from "./local-agent-config.js";
 
 const snapshot = getLocalAgentProviderAvailabilitySnapshot({
   ...process.env,
@@ -67,18 +68,18 @@ assert.match(personalOauthOnly?.reason ?? "", /Personal Antigravity\/Google AI P
       process.platform === "win32" ? "@echo off\r\nexit /b 0\r\n" : "#!/bin/sh\nexit 0\n",
     );
     chmodSync(antigravityExecutable, 0o700);
-    const providerConfig = {
+    const providerConfig: SubagentsConfig = {
       enabled: true,
-      instructions: "on-demand" as const,
+      instructions: "on-demand",
       providers: [
         {
-          id: "codex" as const,
+          id: "codex",
           enabled: true,
           command: executable,
           env: { OPENAI_API_KEY: "configured-secret", EMPTY_VALUE: "" },
         },
         {
-          id: "antigravity" as const,
+          id: "antigravity",
           enabled: true,
           command: antigravityExecutable,
           env: {
