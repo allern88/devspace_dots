@@ -14,11 +14,15 @@ local environment, or Google Cloud ADC owns its credentials.
 
 For Antigravity automation, require exactly one approved mode:
 
-- a locally injected `GEMINI_API_KEY` for Google AI Studio; or
+- a locally injected `GEMINI_API_KEY` for Google AI Studio, with
+  `~/.gemini/antigravity-cli/settings.json` containing
+  `"modelProvider": "gemini"`; or
 - `AGY_ADC_AUTH=true` with Gemini Enterprise/Google Cloud ADC.
 
-Do not use or suggest personal Antigravity or Google AI Pro OAuth through
-DevSpace. Do not configure both Google automation modes simultaneously.
+The API key alone is not sufficient. Confirm the official CLI provider selection
+without reading or displaying the key. Do not use or suggest personal
+Antigravity or Google AI Pro OAuth through DevSpace. Do not configure both
+Google automation modes simultaneously.
 
 ## Inspect before testing
 
@@ -33,9 +37,9 @@ Treat a provider listed as available as an installation check only. It is not
 proof that authentication, quota, model access, or a real task works.
 
 If DevSpace reports `blocked_by_trust_policy`, do not bypass it. Identify and
-remove the unsupported authentication mode, third-party endpoint, insecure URL,
-or gateway override. Never replace it with an unofficial mirror or shared token
-service.
+remove the unsupported authentication mode, missing Gemini provider selection,
+third-party endpoint, insecure URL, or gateway override. Never replace it with
+an unofficial mirror or shared token service.
 
 ## Smoke test
 
@@ -80,10 +84,10 @@ plus a successful continuation turn.
 ## Security interpretation
 
 The runner verifies known endpoint overrides, approved Google automation mode,
-and real task behavior. It does not perform packet capture. State this
-limitation explicitly. Production acceptance also requires a machine-level
-outbound connection check confirming only official provider domains or localhost
-were contacted.
+official Gemini provider selection for API-key mode, and real task behavior. It
+does not perform packet capture. State this limitation explicitly. Production
+acceptance also requires a machine-level outbound connection check confirming
+only official provider domains or localhost were contacted.
 
 Unknown remote hosts, developer-hosted relays, unofficial mirrors, personal
 Antigravity OAuth reuse, browser-session extraction, or automatic account
