@@ -5,7 +5,10 @@ import {
   type DevspaceConfig,
 } from "./config-schema.js";
 import { storedSubagentsConfigSchema } from "./local-agent-config.js";
-import { LOCAL_AGENT_PROVIDERS } from "./local-agent-profiles.js";
+import {
+  LOCAL_AGENT_PROVIDERS,
+  type LocalAgentProvider,
+} from "./local-agent-profiles.js";
 
 const legacyConfigSchema = z.object({
   host: z.string().optional(),
@@ -44,6 +47,9 @@ const LEGACY_CONFIG_KEYS = new Set([
   "tools",
   "ui",
 ]);
+
+const LEGACY_SUBAGENT_PROVIDERS: readonly LocalAgentProvider[] =
+  LOCAL_AGENT_PROVIDERS.filter((provider) => provider !== "antigravity");
 
 export function migrateLegacyConfig(value: unknown): DevspaceConfig {
   const legacy = legacyConfigSchema.parse(value);
@@ -92,7 +98,7 @@ function migrateLegacySubagents(
   return {
     enabled: value,
     providers: value
-      ? LOCAL_AGENT_PROVIDERS.map((id) => ({ id, enabled: true }))
+      ? LEGACY_SUBAGENT_PROVIDERS.map((id) => ({ id, enabled: true }))
       : [],
   };
 }
