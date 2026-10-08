@@ -42,6 +42,8 @@
     "start": "node dist/cli.js serve",
     "test": "tsx --test --test-concurrency=1 \"src/**/*.test.ts\"",
     "test:package-install": "tsx --test --test-concurrency=1 \"test/package-install-smoke.test.ts\"",
+    "test:official-providers": "pnpm build && tsx scripts/official-provider-stability.ts --runs 5",
+    "test:official-providers:stability": "pnpm build && tsx scripts/official-provider-stability.ts --runs 30",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [],

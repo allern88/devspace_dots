@@ -5,12 +5,16 @@ import {
   type DevspaceConfig,
 } from "./config-schema.js";
 import { storedSubagentsConfigSchema } from "./local-agent-config.js";
-import { LOCAL_AGENT_PROVIDERS } from "./local-agent-profiles.js";
+import {
+  LOCAL_AGENT_PROVIDERS,
+  type LocalAgentProvider,
+} from "./local-agent-profiles.js";
 
 const legacyConfigSchema = z.object({
   host: z.string().optional(),
   port: z.number().optional(),
   tool_mode: z.enum(["claude", "codex"]).optional(),
+  toolMode: z.enum(["claude", "codex"]).optional(),
   allowedRoots: z.array(z.string()).optional(),
   publicBaseUrl: z.string().nullable().optional(),
   allowedHosts: z.array(z.string()).optional(),
@@ -32,6 +36,7 @@ const LEGACY_CONFIG_KEYS = new Set([
   "host",
   "port",
   "tool_mode",
+  "toolMode",
   "allowedRoots",
   "publicBaseUrl",
   "allowedHosts",
@@ -44,6 +49,9 @@ const LEGACY_CONFIG_KEYS = new Set([
   "tools",
   "ui",
 ]);
+
+const LEGACY_SUBAGENT_PROVIDERS: readonly LocalAgentProvider[] =
+  LOCAL_AGENT_PROVIDERS.filter((provider) => provider !== "antigravity");
 
 export function migrateLegacyConfig(value: unknown): DevspaceConfig {
   const legacy = legacyConfigSchema.parse(value);
@@ -67,7 +75,9 @@ export function migrateLegacyConfig(value: unknown): DevspaceConfig {
       worktreeRoot: legacy.worktreeRoot,
     }),
     storage: definedEntries({ stateDir: legacy.stateDir }),
-    tools: definedEntries({ mode: legacy.tools?.mode ?? legacy.tool_mode }),
+    tools: definedEntries({
+      mode: legacy.tools?.mode ?? legacy.toolMode ?? legacy.tool_mode,
+    }),
     ui: definedEntries({ enabled: legacy.ui?.enabled }),
     artifacts: definedEntries({
       enabled: legacy.artifactsEnabled,
@@ -92,7 +102,7 @@ function migrateLegacySubagents(
   return {
     enabled: value,
     providers: value
-      ? LOCAL_AGENT_PROVIDERS.map((id) => ({ id, enabled: true }))
+      ? LEGACY_SUBAGENT_PROVIDERS.map((id) => ({ id, enabled: true }))
       : [],
   };
 }

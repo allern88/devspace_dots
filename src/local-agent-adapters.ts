@@ -10,6 +10,7 @@ import {
   resolveAcpModelConfigUpdate,
   resolveAcpEffortConfigUpdate,
 } from "./local-agent-acp.js";
+import { AntigravityLocalAgentDriver } from "./local-agent-antigravity.js";
 import {
   ClaudeLocalAgentDriver,
   claudeCommandEnvironment,
@@ -28,6 +29,7 @@ import {
   type PiSessionFactory,
 } from "./local-agent-pi.js";
 import type { LocalAgentDriver } from "./local-agent-runtime.js";
+import { withOfficialProviderTrust } from "./official-provider-trust.js";
 
 export type LocalAgentAdapter = LocalAgentDriver;
 
@@ -49,15 +51,19 @@ export function createLocalAgentDrivers(
   const providerEnvOverrides = (provider: LocalAgentProvider) => options.subagents
     ? localAgentProviderEnvironmentOverrides(options.subagents, provider)
     : {};
-  return [
+  const drivers: LocalAgentDriver[] = [
     new CodexLocalAgentDriver(providerEnv("codex")),
     new ClaudeLocalAgentDriver(options.claudeQueryFactory, providerEnv("claude")),
+    new AntigravityLocalAgentDriver(providerEnv("antigravity")),
     new OpencodeLocalAgentDriver(options.opencodeFactory, providerEnv("opencode")),
     new PiLocalAgentDriver(options.piSessionFactory, providerEnvOverrides("pi")),
     new AcpLocalAgentDriver("cursor", providerEnv("cursor")),
     new AcpLocalAgentDriver("copilot", providerEnv("copilot")),
     new AcpLocalAgentDriver("grok", providerEnv("grok")),
   ];
+  return drivers.map((driver) => (
+    withOfficialProviderTrust(driver, providerEnv(driver.provider))
+  ));
 }
 
 export function extractLocalAgentResponseText(value: unknown): string {

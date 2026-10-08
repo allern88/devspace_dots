@@ -460,6 +460,7 @@ function displayProvider(provider: LocalAgentProvider): string {
   switch (provider) {
     case "codex": return "Codex";
     case "claude": return "Claude";
+    case "antigravity": return "Antigravity";
     case "opencode": return "OpenCode";
     case "pi": return "Pi";
     case "cursor": return "Cursor";

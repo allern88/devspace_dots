@@ -7,6 +7,7 @@ import {
   localAgentProviderEnvironment,
   type SubagentsConfig,
 } from "./local-agent-config.js";
+import { officialProviderTrustDecision } from "./official-provider-trust.js";
 
 export interface LocalAgentProviderAvailability {
   name: LocalAgentProvider;
@@ -30,6 +31,15 @@ function checkLocalAgentProviderAvailability(
   config?: SubagentsConfig,
 ): LocalAgentProviderAvailability {
   const providerEnv = config ? localAgentProviderEnvironment(config, provider, env) : env;
+  const trust = officialProviderTrustDecision(provider, providerEnv);
+  if (!trust.allowed) {
+    return {
+      name: provider,
+      available: false,
+      reason: trust.reason ?? "blocked by official-only policy",
+      note: "blocked_by_trust_policy",
+    };
+  }
   switch (provider) {
     case "codex":
       return codexAvailability(providerEnv);
@@ -37,6 +47,12 @@ function checkLocalAgentProviderAvailability(
       return providerEnv.CLAUDE_COMMAND
         ? commandAvailability(provider, providerEnv.CLAUDE_COMMAND, providerEnv)
         : packageAvailability(provider, "@anthropic-ai/claude-agent-sdk");
+    case "antigravity":
+      return commandAvailability(
+        provider,
+        providerEnv.ANTIGRAVITY_COMMAND ?? "agy",
+        providerEnv,
+      );
     case "opencode":
       return packageAvailability(provider, "@opencode-ai/sdk/v2");
     case "pi":
